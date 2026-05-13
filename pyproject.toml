@@ -1,12 +1,13 @@
 [project]
-name = "reachy-mini"
+name = "reachy-mini-experiments"
 version = "0.1.0"
 description = "Experiments and apps for Reachy Mini wireless"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    # Robot SDK
-    "reachy2-sdk",
+    # Face detection
+    "insightface>=0.7",
+    "onnxruntime>=1.18",
     # AI providers
     "google-generativeai>=0.8",
     "ollama>=0.4",

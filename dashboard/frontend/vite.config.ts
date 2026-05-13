@@ -5,8 +5,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://localhost:8000",
-      "/ws": { target: "ws://localhost:8000", ws: true },
+      // AI services backend (LLM, vision AI, etc.)
+      "/api/ai": "http://localhost:8001",
+      // Reachy daemon — robot control, state, media
+      "/daemon": {
+        target: "http://reachy-mini.local:8000",
+        rewrite: (path) => path.replace(/^\/daemon/, ""),
+        ws: true,
+      },
     },
   },
 });

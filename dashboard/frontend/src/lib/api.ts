@@ -1,22 +1,16 @@
-const BASE = "/api";
+// Robot control — proxied to reachy-mini.local:8000 via /daemon
+const DAEMON = "/daemon/api";
+
+// AI services — our FastAPI backend on :8001
+const AI = "/api/ai";
 
 export async function getRobotStatus() {
-  const res = await fetch(`${BASE}/robot/status`);
+  const res = await fetch(`${DAEMON}/status`);
   return res.json() as Promise<{ connected: boolean }>;
 }
 
-export async function moveHead(pan: number, tilt: number, roll: number) {
-  await fetch(`${BASE}/robot/head/move`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pan, tilt, roll }),
-  });
+export async function getDaemonDocs() {
+  return `${DAEMON.replace("/api", "")}/docs`;
 }
 
-export async function resetHead() {
-  await fetch(`${BASE}/robot/head/reset`, { method: "POST" });
-}
-
-export function getCameraStreamUrl() {
-  return `${BASE}/vision/stream`;
-}
+export { AI };
