@@ -1,0 +1,28 @@
+# Environment
+.env
+.env.local
+
+# Python / uv
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+dashboard/frontend/dist/
+dashboard/frontend/.vite/
+
+# Misc
+.DS_Store
+*.log
+*.mp4
+*.avi
+captures/
