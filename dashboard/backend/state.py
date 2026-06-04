@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio  # noqa: F401 — needed for Optional[asyncio.Task] annotation
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -12,12 +12,13 @@ if TYPE_CHECKING:
 
 
 class AppState:
-    robot: Optional["ReachyMini"] = None
+    robot: ReachyMini | None = None
     robot_ready: bool = False          # True once WebRTC media stream is up
-    latest_frame: Optional[np.ndarray] = None    # raw camera frame
-    annotated_frame: Optional[np.ndarray] = None # frame with face overlay
+    latest_frame: np.ndarray | None = None    # raw camera frame
+    annotated_frame: np.ndarray | None = None # frame with face overlay
     tracking: bool = False
-    tracker_task: Optional[asyncio.Task] = None
+    tracker_task: asyncio.Task | None = None
+    track_mode: str = "listening"      # "listening" | "orienting" | "tracking"
 
 
 state = AppState()

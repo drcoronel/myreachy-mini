@@ -7,6 +7,17 @@ Flat Python + TypeScript monorepo managed with **uv** for Python and **npm/Vite*
 
 > See `agents.local.md` for robot type, connection details, and setup status.
 
+## Robot reference
+
+Before implementing features, read the upstream SDK agent guide for hardware capabilities,
+API patterns, and constraints:
+https://github.com/pollen-robotics/reachy_mini/blob/main/AGENTS.md
+
+Or as a shorter inline note inside the existing "What this repo is" block:
+
+> For hardware capabilities and SDK patterns, see the upstream guide:
+> https://github.com/pollen-robotics/reachy_mini/blob/main/AGENTS.md
+
 ## Layout
 
 ```

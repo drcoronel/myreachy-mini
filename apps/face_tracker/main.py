@@ -39,6 +39,7 @@ async def main() -> None:
             logger.error("Camera stream did not start within 30s")
             return
 
+        robot.wake_up()
         local_state.tracking = True
         try:
             await run_tracker(local_state)
