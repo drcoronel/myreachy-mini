@@ -99,8 +99,18 @@ class _ReachyMiniNetwork(ReachyMini):
         )
 
 
-def create_robot(**kwargs) -> ReachyMini:
-    """Create a ReachyMini connected to the configured daemon host/port."""
+def create_robot(sim: bool = False, **kwargs) -> ReachyMini:
+    """Create a ReachyMini connected to the configured daemon host/port.
+
+    Pass sim=True when connecting to a local reachy-mini-daemon --mockup-sim or --sim
+    instance — skips the network/WebRTC patches that only apply to the physical robot.
+    """
+    if sim:
+        kwargs.setdefault("host", "localhost")
+        kwargs.setdefault("port", settings.reachy_port)
+        kwargs.setdefault("connection_mode", "localhost_only")
+        return ReachyMini(**kwargs)
+
     kwargs.setdefault("host", settings.reachy_host)
     kwargs.setdefault("port", settings.reachy_port)
     kwargs.setdefault("connection_mode", "network")

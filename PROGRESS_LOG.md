@@ -62,6 +62,101 @@ Started with OpenCV Haar cascade on the laptop webcam → `apps/face_tracker/mai
 
 ---
 
+## 01.07.2026 (Uke 27) — Robot mic array integration + config fixes
+
+### Goal
+Switch conversation audio input from laptop mic (sounddevice) to the robot's onboard ReSpeaker XVF3800 mic array via the SDK's WebRTC audio stream.
+
+### Why the laptop mic failed
+- `sounddevice` opened the MacBook mic at 16kHz — it captured audio but levels were extremely low (peak 0.006 on ±1.0 scale)
+- Silero VAD never triggered (max probability 0.02) — the conversation loop hung at "Listening..." indefinitely
+- The robot's mic array is purpose-built for far-field speech capture and already streams over WebRTC
+
+### `MicCapture` rewrite (`services/audio/mic.py`)
+- Replaced `sounddevice.InputStream` with `robot.media.get_audio_sample()` (SDK media manager)
+- Audio arrives as stereo float32 `(N, 2)` at 16kHz via WebRTC (Opus-decoded to F32LE)
+- Downmix to mono via `sample.mean(axis=1)`, buffer into 512-sample windows for Silero VAD
+- Key detail: `get_audio_sample()` returns variable-length chunks — must drain **all** complete 512-sample windows per poll (`while` not `if`) to avoid lag
+- `start_recording()` / `stop_recording()` bracket each utterance capture
+- Constructor now takes `media_manager` parameter instead of creating its own audio source
+
+### pydantic-settings `extra="ignore"` fix
+- `core/config.py` `Settings` rejected `CONV_*` env vars from `.env` → added `extra="ignore"`
+- `apps/conversation/config.py` `ConversationSettings` rejected `REACHY_*` vars → same fix
+- Root cause: multiple `BaseSettings` classes sharing one `.env` file each see all vars; pydantic's default is `extra="forbid"`
+
+### Status
+- WIP — not yet tested end-to-end (WebRTC stream was slow to negotiate during testing)
+- Next: test robot mic capture, add skip-camera flag for voice-only mode
+
+### Key files changed
+- `services/audio/mic.py` — rewritten for robot mic array
+- `apps/conversation/main.py` — passes `robot.media` to `MicCapture`
+- `core/config.py` — `extra="ignore"`
+- `apps/conversation/config.py` — `extra="ignore"`
+
+---
+
+## 12.06.2026 (Uke 24) — Conversation app: voice pipeline + personality system
+
+### Goal
+Build a full voice conversation loop: mic → STT → LLM → TTS, running concurrently with the face tracker so Reachy looks at whoever it's talking to.
+
+### Voice pipeline (`apps/conversation/`)
+- `MicCapture` — captures utterances using **Silero VAD** (replaced RMS energy threshold)
+  - Fixed 512-sample windows at 16kHz, `speech_threshold=0.5`, `silence_ms=1200`
+  - VAD prevents mid-sentence cutoffs; RMS was fooled by pauses and background noise
+- `STTService` — **faster-whisper large-v3-turbo** (upgraded from `base`)
+  - Pinned `language="en"` + `condition_on_previous_text=True` for Hispanic-accented English
+  - `vad_filter=False` — Silero VAD already handled upstream, no double-filtering
+- `OllamaProvider` — `llama3.2:3b` via local Ollama
+- `TTSService` — Kokoro `af_heart` voice, 24kHz output via sounddevice
+
+### Personality system (`config/personalities.yaml` + `apps/conversation/personality.py`)
+- Four personalities defined in YAML: `friendly`, `curious`, `professional`, `playful`
+- `load_personality(name)` reads YAML and returns the prompt string; defaults to `"friendly"`
+- `ConversationApp` accepts `personality=` kwarg — swappable without touching pipeline code
+
+### `_build_messages()` — context window design
+```python
+[
+    Message(role="system", content=f"{personality} {grounding}"),
+    *self._history[-6:],   # last 3 turns, bounded
+    Message(role="user", content=user_text),
+]
+```
+- Grounding: `"You are currently looking at someone."` / `"You cannot currently see anyone."` based on `track_mode`
+- History window fixed at 6 messages (3 turns) — suits llama3.2:3b's 4k context
+
+### Simulator support (`core/robot.py`)
+- `create_robot(sim=True)` — skips `_ReachyMiniNetwork` and WebRTC patches, uses `localhost_only`
+- `REACHY_SIM=1` env var in `apps/conversation/main.py` switches mode without code changes
+- Run: `reachy-mini-daemon --mockup-sim` + `REACHY_SIM=1 uv run python -m apps.conversation.main`
+
+### Logging added to all services
+All services (`mic`, `stt`, `tts`, `ollama`) now emit structured INFO logs — pipeline stage is visible from module name via `logging.getLogger(__name__)`.
+
+### Config (`apps/conversation/config.py`)
+All tunable values centralised in `ConversationSettings` (pydantic-settings, `CONV_` prefix):
+- `CONV_LLM_MODEL`, `CONV_STT_MODEL`, `CONV_STT_LANGUAGE`, `CONV_TTS_VOICE`
+- `CONV_VAD_THRESHOLD`, `CONV_VAD_SILENCE_MS`
+- `CONV_PERSONALITY`, `CONV_SIM`
+
+Override at runtime with env vars or add to `.env` — no code changes needed.
+`.env.example` updated with all `CONV_` variables and defaults.
+
+### Key files
+- `apps/conversation/main.py` — conversation loop, all values from settings
+- `apps/conversation/config.py` — pydantic-settings config (`CONV_` prefix)
+- `apps/conversation/personality.py` — YAML loader
+- `config/personalities.yaml` — personality definitions
+- `services/audio/mic.py` — Silero VAD capture
+- `services/audio/stt.py` — faster-whisper large-v3-turbo
+- `services/audio/tts.py` — Kokoro TTS
+- `core/robot.py` — `create_robot(sim=True)` support
+
+---
+
 ## 04.06.2026 (Uke 23) — Speech direction detection + orientation state machine
 
 ### Goal
